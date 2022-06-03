@@ -2,6 +2,8 @@ const express = require('express')
 const app = express()
 const cors = require('cors')
 const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+
 require('dotenv').config()
 
 
@@ -9,6 +11,8 @@ const MONGO_URI = 'mongodb+srv://sdkmarior:A123456789_05@cluster0.et10y.mongodb.
 
 app.use(cors())
 app.use(express.static('public'))
+app.use(bodyParser.urlencoded({ extended: false }));
+
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/views/index.html')
 });
@@ -22,8 +26,8 @@ mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
 
 // _id sera creado por defecto y sera el campo de enlace.
 const userSchema = new mongoose.Schema({
-   username: String, //"fcc_test",
-  _id: mongoose.SchemaTypes.ObjectId //"5fb5853f734231456ccb3b05"
+   username: String //, //"fcc_test",
+   // _id: String("5fb5853f734231456ccb3b05");
 });
 
 const exerciseSchema = new mongoose.Schema({
@@ -31,9 +35,9 @@ const exerciseSchema = new mongoose.Schema({
   description: String, //"test",
   duration: Number, //60,
   date: Date,
-  _id: mongoose.SchemaTypes.ObjectId,
-  _idUser : mongoose.SchemaTypes.ObjectId
+  _id : String
 });
+
 
 let User = mongoose.model("User", userSchema);
 let Exercise = mongoose.model("Excercise",exerciseSchema);
@@ -47,7 +51,11 @@ The returned response from POST /api/users with form data username will be an ob
 //Debe retornar:
 //{"username":"mario.reiley","_id":"6294a66e8413530938cc3ee3"}
 app.post('/api/users',(req,res)=>{
-  
+  const user = new User({username:req.body.username}); 
+  (async () => {
+    const newUser = await user.save();
+    res.json({username : newUser.username, _id :newUser._id});
+  })();  
 }); // post('/api/users'
 
 /*
@@ -71,7 +79,36 @@ The response returned from POST /api/users/:_id/exercises will be the user objec
 // debe retornat:
 //  //{"_id":"6294a5f48413530938cc3ede","username":"mario.reiley","date":"Mon May 30 2022","duration":2,"description":"ssss"}
 app.post('/api/users/:_id/exercises',(req,res)=>{
+  
+  // const user_id = "62989657545aec9bc29e1860";//"6298939dffa1c722341229b4"; //req.body.:_id;
+  // console.log(_id);
+  // let  dataUser = {};//User();
+  
+  //  buscar el doc del user para un _id 
+  (async ()=> {
+    const user_id = req.body._id;   
+    // console.log(user_id);
+    const dataUser = await User.findById({_id:user_id});
+    // const dataUser = await User.findById({_id:"6298939dffa1c722341229b4"});
+    // const dataUser = await User.findById({_id:"62989657545aec9bc29e1860"});
+    if(dataUser) {
+      res.json({username:dataUser.username,_id:dataUser._id});               
+    }else {
+      res.json({error:'No encontrado'});
+    }
 
+    
+  })(); 
+  
+  (async () => {
+    const exercise = new Exercise({username:dataUser.username,
+    date:"Mon May 30 2022",duration:req.body.duration,description:req.body.description,_idUser:dataUser._id});
+    
+    const newExercise = await exercise.save();
+    res.json({_id:newExercise._id,username:newExercise.username,
+    date:newExercise.date,duration:newExercise.duration,description:newExercise.description});
+  })();  
+  
 }) //app.post :_id/exercises
 
 
