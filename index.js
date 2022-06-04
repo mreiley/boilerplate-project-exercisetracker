@@ -27,7 +27,6 @@ mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
 // _id sera creado por defecto y sera el campo de enlace.
 const userSchema = new mongoose.Schema({
    username: String //, //"fcc_test",
-   // _id: String("5fb5853f734231456ccb3b05");
 });
 
 const exerciseSchema = new mongoose.Schema({
@@ -35,7 +34,7 @@ const exerciseSchema = new mongoose.Schema({
   description: String, //"test",
   duration: Number, //60,
   date: Date,
-  _id : String
+  userId: String
 });
 
 
@@ -66,9 +65,12 @@ The GET request to /api/users returns an array.
 Each element in the array returned from GET /api/users is an object literal containing a user's username and _id.
 */
 app.get('/api/users',(req,res)=>{
-  
+  let usuarios = [];
+  (async () => {
+    usuarios = await User.find().exec();
+    res.json({usuarios : usuarios});
+  })();  
 }); // get('/api/users'
-
 
 /*
 You can POST to /api/users/:_id/exercises with form data description, duration, and optionally date. If no date is supplied, the current date will be used.
@@ -76,38 +78,41 @@ You can POST to /api/users/:_id/exercises with form data description, duration, 
 The response returned from POST /api/users/:_id/exercises will be the user object with the exercise fields added.
 */
 
-// debe retornat:
+// debe retornar:
 //  //{"_id":"6294a5f48413530938cc3ede","username":"mario.reiley","date":"Mon May 30 2022","duration":2,"description":"ssss"}
 app.post('/api/users/:_id/exercises',(req,res)=>{
-  
-  // const user_id = "62989657545aec9bc29e1860";//"6298939dffa1c722341229b4"; //req.body.:_id;
-  // console.log(_id);
-  // let  dataUser = {};//User();
-  
-  //  buscar el doc del user para un _id 
+
   (async ()=> {
     const user_id = req.body._id;   
-    // console.log(user_id);
-    const dataUser = await User.findById({_id:user_id});
-    // const dataUser = await User.findById({_id:"6298939dffa1c722341229b4"});
-    // const dataUser = await User.findById({_id:"62989657545aec9bc29e1860"});
-    if(dataUser) {
-      res.json({username:dataUser.username,_id:dataUser._id});               
-    }else {
-      res.json({error:'No encontrado'});
-    }
+    let date = Date.now();
+    try {
+      const dataUser = await User.findById({_id:user_id})      
+      if(dataUser) {
+        if(req.body.date) {
+           date = req.body.date;
+        }
+        const exercise = new Exercise({username:dataUser.username,
+                                       description:req.body.description,
+                                       duration:req.body.duration,
+                                       date:date,
+                                       userId:dataUser._id 
+                                       });
+        const newExercise = await exercise.save();
 
+        res.json({_id:newExercise._id,
+                   username:newExercise.username,
+                   date:newExercise.date,
+                   duration:newExercise.duration,
+                   description:newExercise.description});
+
+      }else {
+        res.json({error:'_id dont exist'});
+      }
+    }catch(err) {
+       res.json({error:err});
+    };
     
   })(); 
-  
-  (async () => {
-    const exercise = new Exercise({username:dataUser.username,
-    date:"Mon May 30 2022",duration:req.body.duration,description:req.body.description,_idUser:dataUser._id});
-    
-    const newExercise = await exercise.save();
-    res.json({_id:newExercise._id,username:newExercise.username,
-    date:newExercise.date,duration:newExercise.duration,description:newExercise.description});
-  })();  
   
 }) //app.post :_id/exercises
 
@@ -136,6 +141,20 @@ GET user's exercise log: GET /api/users/:_id/logs?[from][&to][&limit]
 [ ] = optional
 
 from, to = dates (yyyy-mm-dd); limit = number
+
+Log:
+
+{
+  username: "fcc_test",
+  count: 1,
+  _id: "5fb5853f734231456ccb3b05",
+  log: [{
+    description: "test",
+    duration: 60,
+    date: "Mon Jan 01 1990",
+  }]
+}
+
 */
 app.get('/api/users/:_id/logs',(req,res)=>{
   
