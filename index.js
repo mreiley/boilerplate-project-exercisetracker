@@ -26,8 +26,11 @@ mongoose.connect(MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
 
 // _id sera creado por defecto y sera el campo de enlace.
 const userSchema = new mongoose.Schema({
-   username: String //, //"fcc_test",
+   username: String //, //"fcc_test",   
+},{
+  versionKey: false
 });
+
 
 const exerciseSchema = new mongoose.Schema({
   username: String, // "fcc_test",
@@ -35,6 +38,8 @@ const exerciseSchema = new mongoose.Schema({
   duration: Number, //60,
   date: Date,
   userId: String
+},{
+   versionKey: false
 });
 
 
@@ -157,7 +162,29 @@ Log:
 
 */
 app.get('/api/users/:_id/logs',(req,res)=>{
-  
+  (async () => {
+    try {
+      // Datos de este user.
+      const dataUser = await User.findById({_id:req.params._id})  
+      if(dataUser) {
+        // Ejercicios de este user.
+        const exerciseLog = await Exercise.find({userId:dataUser._id}).exec();
+        const log = {
+          username: dataUser.username,
+          count: exerciseLog.length,
+          _id: dataUser._id,
+          log: exerciseLog
+        };
+        
+        // Enviar resultado
+        res.json({datos:log});
+      }
+      
+    }catch(e){
+      res.json({error:e.message});
+    };
+  })(); //async 
+
 }); ///api/users/:_id/logs
 
 
