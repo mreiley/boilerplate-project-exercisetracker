@@ -65,15 +65,15 @@ app.post('/api/users',(req,res)=>{
 /*
 You can make a GET request to /api/users to get a list of all users.
 
-The GET request to /api/users returns an array.
+The GET request to /api/users returns an array. // error
 
-Each element in the array returned from GET /api/users is an object literal containing a user's username and _id.
+Each element in the array returned from GET /api/users is an object literal containing a user's username and _id. // error
 */
 app.get('/api/users',(req,res)=>{
   let usuarios = [];
   (async () => {
     usuarios = await User.find().exec();
-    res.json({usuarios : usuarios});
+    res.json(usuarios);
   })();  
 }); // get('/api/users'
 
@@ -88,28 +88,34 @@ The response returned from POST /api/users/:_id/exercises will be the user objec
 app.post('/api/users/:_id/exercises',(req,res)=>{
 
   (async ()=> {
-    const user_id = req.body._id;   
-    let date = Date.now();
+    const user_id = req.params._id;   
+    let userExercise = {};
+    let date = new Date(Date.now()).toDateString();
     try {
-      const dataUser = await User.findById({_id:user_id})      
-      if(dataUser) {
+      const user = await User.findById({_id:user_id})      
+      if(user) {
         if(req.body.date) {
-           date = req.body.date;
+           date = new Date(req.body.date).toDateString();
         }
-        const exercise = new Exercise({username:dataUser.username,
+        
+        const exercise = new Exercise({username:user.username,
                                        description:req.body.description,
                                        duration:req.body.duration,
                                        date:date,
-                                       userId:dataUser._id 
+                                       userId:user._id 
                                        });
         const newExercise = await exercise.save();
 
-        res.json({_id:newExercise._id,
-                   username:newExercise.username,
-                   date:newExercise.date,
-                   duration:newExercise.duration,
-                   description:newExercise.description});
-
+        userExercise = {
+          _id:user._id,
+          username:user.username,
+          date:newExercise.date,
+          duration:newExercise.duration,
+          description:newExercise.description
+        }
+      
+        res.json(userExercise);
+      
       }else {
         res.json({error:'_id dont exist'});
       }
@@ -168,16 +174,21 @@ app.get('/api/users/:_id/logs',(req,res)=>{
       const dataUser = await User.findById({_id:req.params._id})  
       if(dataUser) {
         // Ejercicios de este user.
-        const exerciseLog = await Exercise.find({userId:dataUser._id}).exec();
+        const exerciseLog = await Exercise.find({userId:dataUser._id})
+          .select(['-_id','description','duration','date'])
+          .where('date').gte(req.query.from).lte(req.query.to)
+          .limit(req.query.limit)
+          .exec();
+        
         const log = {
           username: dataUser.username,
           count: exerciseLog.length,
           _id: dataUser._id,
-          log: exerciseLog
+          log: [exerciseLog]
         };
         
         // Enviar resultado
-        res.json({datos:log});
+        res.json({logs:log});
       }
       
     }catch(e){
