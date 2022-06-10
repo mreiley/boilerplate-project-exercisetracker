@@ -85,17 +85,19 @@ The response returned from POST /api/users/:_id/exercises will be the user objec
 
 // debe retornar:
 //  //{"_id":"6294a5f48413530938cc3ede","username":"mario.reiley","date":"Mon May 30 2022","duration":2,"description":"ssss"}
+ 
 app.post('/api/users/:_id/exercises',(req,res)=>{
-
   (async ()=> {
     const user_id = req.params._id;   
     let userExercise = {};
-    let date = new Date(Date.now()).toDateString();
+    let date = new Date(Date.now());
+    
     try {
       const user = await User.findById({_id:user_id})      
       if(user) {
+        
         if(req.body.date) {
-           date = new Date(req.body.date).toDateString();
+           date = new Date(req.body.date);
         }
         
         const exercise = new Exercise({username:user.username,
@@ -105,15 +107,15 @@ app.post('/api/users/:_id/exercises',(req,res)=>{
                                        userId:user._id 
                                        });
         const newExercise = await exercise.save();
-
+        
         userExercise = {
-          _id:user._id,
           username:user.username,
-          date:newExercise.date,
-          duration:newExercise.duration,
-          description:newExercise.description
+          description:newExercise.description,
+          duration:newExercise.duration,  
+          _id:user._id,
+          date:newExercise.date.toDateString().substring(0,15)
         }
-      
+
         res.json(userExercise);
       
       }else {
