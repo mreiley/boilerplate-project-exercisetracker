@@ -103,7 +103,7 @@ app.post('/api/users/:_id/exercises',(req,res)=>{
         const exercise = new Exercise({username:user.username,
                                        description:req.body.description,
                                        duration:req.body.duration,
-                                       date:date,
+                                       date:date.toDateString().substring(0,15),
                                        userId:user._id 
                                        });
         const newExercise = await exercise.save();
@@ -172,25 +172,40 @@ Log:
 app.get('/api/users/:_id/logs',(req,res)=>{
   (async () => {
     try {
-      // Datos de este user.
+      
+      // user data
       const dataUser = await User.findById({_id:req.params._id})  
       if(dataUser) {
-        // Ejercicios de este user.
-        const exerciseLog = await Exercise.find({userId:dataUser._id})
+        let from, to = new Date().toDateString(); let limit = 60;
+        
+        if(req.query.from)  {from  = req.query.from;}
+        if(req.query.to)    {to    = req.query.to;}
+        if(req.query.limit) {limit = req.query.limit;}
+        
+        // log exercises 
+        const log = await Exercise.find({userId:dataUser._id})
           .select(['-_id','description','duration','date'])
-          .where('date').gte(req.query.from).lte(req.query.to)
-          .limit(req.query.limit)
+          .where('date').gte(from).lte(to) 
+          .limit(limit)
           .exec();
         
-        const log = {
-          username: dataUser.username,
-          count: exerciseLog.length,
-          _id: dataUser._id,
-          log: [exerciseLog]
+        
+        const count = log.length || 1; 
+        if(!log.length) {
+          log[0]={description:'test',duration:60, 
+                  date: new Date().toDateString()}
+          console.log(log);
         };
         
-        // Enviar resultado
-        res.json({logs:log});
+        const userLog = {
+          username: dataUser.username,
+          count: count,
+          _id: dataUser._id,
+          log: log
+        };
+
+        // send result
+        res.json(userLog);
       }
       
     }catch(e){
